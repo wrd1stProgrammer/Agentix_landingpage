@@ -210,7 +210,7 @@ export const en = {
     tagline: "AI Crypto Intelligence Briefings.",
     disclaimer: "Research only. Not financial advice.",
   },
-} as const;
+};
 
 export const ko = {
   meta: {
@@ -424,7 +424,7 @@ export const ko = {
     tagline: "AI 크립토 인텔리전스 브리핑.",
     disclaimer: "리서치 목적이며 재정적 조언이 아닙니다.",
   },
-} as const;
+};
 
 export type Dictionary = typeof en;
 
