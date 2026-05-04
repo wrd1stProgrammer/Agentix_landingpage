@@ -163,7 +163,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       </section>
 
       {/* 4. Comparison Section: Chaos vs Control */}
-      <ComparisonSection />
+      <ComparisonSection lang={lang as "en" | "ko"} />
 
       {/* 4. Bottom CTA Section */}
       <section id="beta" className="px-4 py-32 sm:px-6 lg:px-8 bg-stone-50/50 relative overflow-hidden">
