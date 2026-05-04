@@ -6,6 +6,8 @@ export type TrackableEventName =
   | "waitlist_submit_success"
   | "waitlist_submit_error"
   | "waitlist_survey_success"
+  | "waitlist_email_success"
+  | "waitlist_survey_complete"
   | "sample_briefing_click"
   | "hero_cta_click"
   | "faq_expand";
