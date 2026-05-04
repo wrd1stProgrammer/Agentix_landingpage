@@ -136,8 +136,8 @@ export function WaitlistForm({
       trackEvent("waitlist_survey_complete", {
         placement,
         assets: selectedAssets,
-        agents: selectedAgents,
-        styles: selectedStyles,
+        agents: selectedAgents.join(", "),
+        styles: selectedStyles.join(", "),
         info_gap: infoGapRating
       });
       
