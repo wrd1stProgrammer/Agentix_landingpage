@@ -17,7 +17,7 @@ export function ComparisonSection({ lang }: ComparisonSectionProps) {
       <div className="mx-auto max-w-7xl">
         <div className="text-center mb-20">
           <p className="section-kicker">{copy.comparison.kicker}</p>
-          <h2 className="mt-4 text-3xl font-black tracking-tight text-stone-900 md:text-4xl lg:text-5xl text-balance">
+          <h2 className="mt-4 text-3xl font-black tracking-tight text-stone-900 md:text-4xl lg:text-5xl text-balance break-keep">
             {copy.comparison.headline}
           </h2>
         </div>

@@ -10,59 +10,7 @@ import { ScrollVideoMockup } from "@/components/scroll-video-mockup";
 import { ComparisonSection } from "@/components/comparison";
 import { getDictionary, Dictionary } from "@/lib/i18n";
 
-function FloatingHeroCards() {
-  return (
-    <>
-      {/* Floating Cards - Left */}
-      <div className="absolute -left-16 top-1/4 z-20 hidden md:block">
-        <div className="glass-panel float-slow w-48 rounded-2xl p-3 shadow-xl shadow-indigo-900/5 transition-transform hover:scale-105">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-green-500" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Signal Identified</span>
-          </div>
-          <p className="mt-1.5 text-xs font-semibold text-stone-800 line-clamp-1">ARB Whales Accumulating</p>
-          <p className="text-[10px] text-stone-500">Logic: +28% Exchange Outflow</p>
-        </div>
-      </div>
 
-      <div className="absolute -left-24 top-2/3 z-20 hidden md:block">
-        <div className="glass-panel float-slower w-52 rounded-2xl p-3 shadow-xl shadow-indigo-900/5 transition-transform hover:scale-105">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-indigo-500" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Agent Briefing</span>
-          </div>
-          <p className="mt-1.5 text-xs font-semibold text-stone-800 line-clamp-1">SOL Social Sentiment Surge</p>
-          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-stone-100">
-            <div className="h-full w-[85%] bg-indigo-500" />
-          </div>
-        </div>
-      </div>
-
-      {/* Floating Cards - Right */}
-      <div className="absolute -right-20 top-1/3 z-20 hidden md:block">
-        <div className="glass-panel float-slow w-44 rounded-2xl p-3 shadow-xl shadow-indigo-900/5 transition-transform hover:scale-105" style={{ animationDelay: "1s" }}>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-amber-500" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Risk Alert</span>
-          </div>
-          <p className="mt-1.5 text-xs font-semibold text-stone-800 line-clamp-1">ETH Volatility Spike</p>
-          <p className="text-[10px] text-stone-500">Probability: 64%</p>
-        </div>
-      </div>
-
-      <div className="absolute -right-28 top-3/4 z-20 hidden md:block">
-        <div className="glass-panel float-slower w-56 rounded-2xl p-3 shadow-xl shadow-indigo-900/5 transition-transform hover:scale-105" style={{ animationDelay: "1.5s" }}>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-indigo-500" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Council Consensus</span>
-          </div>
-          <p className="mt-1.5 text-xs font-semibold text-stone-800 line-clamp-1">Bullish on Layer 2 Ecosystem</p>
-          <p className="text-[10px] text-stone-500">Confidence: Very High</p>
-        </div>
-      </div>
-    </>
-  );
-}
 
 export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
@@ -111,7 +59,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                 {copy.hero.kicker}
               </div>
               
-              <h1 className="mt-8 text-3xl font-black leading-[1.1] tracking-tight text-stone-900 sm:text-4xl md:text-5xl lg:text-6xl">
+              <h1 className="mt-8 text-3xl font-black leading-[1.1] tracking-tight text-stone-900 sm:text-4xl md:text-5xl lg:text-6xl break-keep text-balance">
                 {copy.hero.headline}
               </h1>
               
@@ -130,7 +78,6 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
             {/* Right Column: Scroll Video Mockup */}
             <div className="relative">
-              <FloatingHeroCards />
               <ScrollVideoMockup 
                 videoSrc="/hero-video.mp4" 
                 fallbackImage="/main.png" 
@@ -146,7 +93,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         
         <div className="mx-auto max-w-7xl text-center">
           <p className="section-kicker">{copy.agents.kicker}</p>
-          <h2 className="mx-auto mt-4 max-w-2xl text-4xl font-black tracking-tight text-balance text-stone-900 md:text-5xl">
+          <h2 className="mx-auto mt-4 max-w-2xl text-4xl font-black tracking-tight text-stone-900 md:text-5xl break-keep text-balance">
             {copy.agents.headline}
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg text-stone-500 leading-relaxed">
@@ -172,7 +119,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         <div className="glass-panel relative mx-auto max-w-5xl overflow-hidden rounded-[3rem] p-10 text-center shadow-2xl shadow-indigo-900/5 sm:p-20">
           <div className="absolute inset-0 -z-10 bg-gradient-to-br from-indigo-50/50 to-cyan-50/50 opacity-80" />
           <p className="section-kicker">{copy.beta.kicker}</p>
-          <h2 className="mt-8 text-4xl font-black tracking-tight text-balance text-stone-900 md:text-5xl">
+          <h2 className="mt-8 text-4xl font-black tracking-tight text-stone-900 md:text-5xl break-keep text-balance">
             {copy.beta.headline}
           </h2>
           <p className="mx-auto mt-8 max-w-2xl text-lg text-stone-500 leading-relaxed">
