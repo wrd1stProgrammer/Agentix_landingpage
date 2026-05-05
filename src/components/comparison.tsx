@@ -26,17 +26,17 @@ export function ComparisonSection({ lang }: ComparisonSectionProps) {
           {/* Chaos Side */}
           <div className="relative group overflow-hidden rounded-[2.5rem] bg-stone-50 border border-stone-100 p-8 sm:p-12 transition-all duration-500 hover:shadow-xl hover:shadow-stone-200/50">
             <div className="mb-8 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-200 text-stone-500">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-200 text-stone-600">
                 <WarningCircleIcon weight="bold" size={24} />
               </div>
-              <h3 className="text-xl font-bold text-stone-400">{copy.comparison.chaosTitle}</h3>
+              <h3 className="text-xl font-black text-stone-400">{copy.comparison.chaosTitle}</h3>
             </div>
             
             <ul className="space-y-6">
               {copy.comparison.chaosItems.map((item, i) => (
-                <li key={i} className="flex items-start gap-4 opacity-50 grayscale transition-all duration-500 group-hover:opacity-100 group-hover:grayscale-0">
-                   <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-stone-300" />
-                   <span className="text-lg font-medium text-stone-600">{item}</span>
+                <li key={i} className="flex items-start gap-4 opacity-70 grayscale transition-all duration-500 group-hover:opacity-100 group-hover:grayscale-0">
+                   <div className="mt-2.5 h-1.5 w-1.5 rounded-full bg-stone-300" />
+                   <span className="text-lg font-bold text-stone-600 tracking-tight">{item}</span>
                 </li>
               ))}
             </ul>
@@ -56,7 +56,7 @@ export function ComparisonSection({ lang }: ComparisonSectionProps) {
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/40">
                   <CheckCircleIcon weight="fill" size={24} />
                 </div>
-                <h3 className="text-xl font-bold text-white tracking-tight">{copy.comparison.controlTitle}</h3>
+                <h3 className="text-xl font-black text-white tracking-tight">{copy.comparison.controlTitle}</h3>
               </div>
 
               <div className="grid gap-6 sm:grid-cols-2">

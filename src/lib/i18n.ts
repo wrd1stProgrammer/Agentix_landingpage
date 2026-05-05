@@ -72,6 +72,13 @@ export const en = {
       { title: "Instant Alpha Alert", desc: "Alerts delivered as soon as opportunity is spotted" }
     ]
   },
+  dailyBriefing: {
+    features: [
+      "Synthesizes overlapping signals",
+      "Highlights conflicting data",
+      "Identifies primary risk factors"
+    ]
+  },
   steps: {
     kicker: "How it works",
     headline: "From agent meetings to your personal thread feed.",
@@ -280,10 +287,17 @@ export const ko = {
     ],
     controlTitle: "Agentix Intelligence",
     controlItems: [
-      { title: "Personalized Intelligence", desc: "나의 포트폴리오에만 최적화된 정보" },
-      { title: "Pure Signal Extraction", desc: "노이즈를 제거한 오직 핵심 데이터" },
-      { title: "Objective Logic Only", desc: "감정을 배제한 에이전트들의 합리적 판단" },
-      { title: "Instant Alpha Alert", desc: "기회가 포착되는 즉시 전해지는 알림" }
+      { title: "맞춤형 인텔리전스", desc: "나의 포트폴리오에만 최적화된 정보" },
+      { title: "순수 신호 추출", desc: "노이즈를 제거한 오직 핵심 데이터" },
+      { title: "객관적 논리 기반", desc: "감정을 배제한 에이전트들의 합리적 판단" },
+      { title: "즉각적인 알파 알림", desc: "기회가 포착되는 즉시 전해지는 알림" }
+    ]
+  },
+  dailyBriefing: {
+    features: [
+      "중복 시그널의 종합 분석",
+      "상충되는 데이터의 강조",
+      "주요 리스크 요인 식별"
     ]
   },
   steps: {

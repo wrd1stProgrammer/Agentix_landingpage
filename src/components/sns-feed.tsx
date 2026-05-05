@@ -45,19 +45,23 @@ export function SnsFeed() {
         ))}
       </div>
       
-      <div className="absolute left-1/2 top-1/2 -z-10 h-full w-full -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(circle_at_center,rgba(79,70,229,0.08),transparent_70%)]" />
-
       {/* Mobile: Horizontal scroll, Desktop: Grid */}
-      <div className="flex w-full gap-6 overflow-x-auto pb-12 pt-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0 sm:pt-0 px-4">
+      <div 
+        className="flex w-full gap-6 overflow-x-auto pb-24 pt-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0 sm:pt-0 px-4"
+        style={{ 
+          maskImage: 'linear-gradient(to bottom, black 70%, transparent 98%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 98%)'
+        }}
+      >
         {feeds.map((agent, idx) => (
           <div key={idx} className="relative group shrink-0 snap-center w-[80vw] max-w-[280px] sm:w-auto sm:max-w-none">
             {/* Agent Info Header */}
             <div className="mb-4 text-left px-2">
               <div className="flex items-center justify-between">
                 <span className={`h-1.5 w-1.5 rounded-full ${agent.accent} animate-pulse`} />
-                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">{agent.role}</span>
+                <span className="text-[10px] font-extrabold text-stone-500 uppercase tracking-widest">{agent.role}</span>
               </div>
-              <h3 className="mt-1 text-sm font-bold text-stone-900">{agent.name}</h3>
+              <h3 className="mt-1 text-base font-black text-stone-900">{agent.name}</h3>
             </div>
 
             {/* Phone Mockup */}

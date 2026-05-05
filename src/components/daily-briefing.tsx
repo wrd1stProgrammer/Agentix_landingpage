@@ -21,11 +21,7 @@ export function DailyBriefing({ lang }: { lang: "en" | "ko" }) {
           </p>
           
           <ul className="mt-8 space-y-4">
-            {[
-              "Synthesizes overlapping signals",
-              "Highlights conflicting data",
-              "Identifies primary risk factors",
-            ].map((feature, idx) => (
+            {copy.dailyBriefing.features.map((feature, idx) => (
               <li key={idx} className="flex items-center gap-3 text-stone-700">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
