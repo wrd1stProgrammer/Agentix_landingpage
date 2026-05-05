@@ -51,7 +51,26 @@ export const en = {
     surveyQ1Label: "1. Which assets do you track?",
     surveyQ1Placeholder: "BTC, ETH, SOL...",
     surveyQ2Label: "2. Select Interest AI Agents (Multi)",
+    surveyQ2Options: [
+      "On-chain Analysis",
+      "Whale Watch",
+      "Market Structure",
+      "Token Unlocks",
+      "Social Narratives",
+      "Risk Identification"
+    ],
     surveyQ3Label: "3. Preferred Trading Style",
+    surveyQ3Options: [
+      "Scalping",
+      "Day Trading",
+      "Swing Trading",
+      "HODL",
+      "DCA",
+      "Momentum",
+      "TA Focused",
+      "FA Focused",
+      "Arbitrage"
+    ],
     surveyQ4Label: "4. Do you often feel a lack of information?",
   },
   comparison: {
@@ -272,7 +291,26 @@ export const ko = {
     surveyQ1Label: "1. 어떤 자산을 추적하시나요?",
     surveyQ1Placeholder: "BTC, ETH, SOL...",
     surveyQ2Label: "2. 관심 AI 에이전트 선택 (중복)",
+    surveyQ2Options: [
+      "온체인 분석",
+      "고래 관찰",
+      "시장 구조/데이터",
+      "언락/공급량",
+      "소셜 내러티브",
+      "리스크 식별"
+    ],
     surveyQ3Label: "3. 선호하는 매매 스타일",
+    surveyQ3Options: [
+      "스캘핑/단타",
+      "데일리 트레이딩",
+      "스윙 트레이딩",
+      "장기 보유 (HODL)",
+      "분할 매수 (DCA)",
+      "모멘텀",
+      "차트 분석(TA) 위주",
+      "펀더멘탈(FA) 위주",
+      "아비트라지/차익거래"
+    ],
     surveyQ4Label: "4. 정보 부족을 자주 느끼시나요?",
   },
   comparison: {

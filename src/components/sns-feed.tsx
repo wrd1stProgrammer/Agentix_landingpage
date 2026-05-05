@@ -47,10 +47,10 @@ export function SnsFeed() {
       
       {/* Mobile: Horizontal scroll, Desktop: Grid */}
       <div 
-        className="flex w-full gap-6 overflow-x-auto pb-24 pt-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0 sm:pt-0 px-4"
+        className="flex w-full gap-6 overflow-x-auto pb-10 pt-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:pb-0 sm:pt-0 px-4"
         style={{ 
-          maskImage: 'linear-gradient(to bottom, black 70%, transparent 98%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 98%)'
+          maskImage: 'linear-gradient(to bottom, black 85%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, black 85%, transparent 100%)'
         }}
       >
         {feeds.map((agent, idx) => (

@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { trackEvent } from "@/lib/analytics";
 import { getDictionary } from "@/lib/i18n";
+import { supabase } from "@/lib/supabase";
 
 type WaitlistFormProps = {
   id: string;
@@ -31,26 +32,6 @@ type Step = "email" | "survey_1" | "survey_2" | "completed";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const AGENTS = [
-  "Chart Agent",
-  "News Agent",
-  "On-chain Agent",
-  "Narrative Agent",
-  "Risk Agent"
-];
-
-const TRADING_STYLES = [
-  "Scalping",
-  "Day Trading",
-  "Swing Trading",
-  "HODL",
-  "DCA",
-  "Momentum",
-  "Mean Reversion",
-  "Arbitrage",
-  "TA Focused",
-  "FA Focused"
-];
 
 function getAttribution(): Attribution {
   if (typeof window === "undefined") return {};
@@ -92,6 +73,7 @@ export function WaitlistForm({
   const [attribution, setAttribution] = useState<Attribution>({});
   const [status, setStatus] = useState<SubmitState>("idle");
   const [error, setError] = useState("");
+  const [dbRecordId, setDbRecordId] = useState<string | null>(null);
 
   useEffect(() => {
     setAttribution(getAttribution());
@@ -120,7 +102,34 @@ export function WaitlistForm({
 
     setStatus("loading");
     try {
-      await new Promise(r => setTimeout(r, 800));
+      const { data, error: sbError } = await supabase
+        .from("waitlist")
+        .insert([
+          { 
+            email: trimmedEmail,
+            utm_source: attribution.utm_source,
+            utm_medium: attribution.utm_medium,
+            utm_campaign: attribution.utm_campaign,
+            referrer: attribution.referrer,
+            placement
+          }
+        ])
+        .select()
+        .single();
+
+      if (sbError) {
+        console.error("Supabase Email Submit Error:", sbError);
+        // Handle duplicate email or other DB errors
+        if (sbError.code === "23505") {
+          setError(lang === "ko" ? "이미 신청된 이메일입니다." : "This email is already registered.");
+        } else {
+          setError(copy.waitlist.networkError);
+        }
+        setStatus("error");
+        return;
+      }
+
+      setDbRecordId(data.id);
       setStatus("idle");
       setStep("survey_1");
       trackEvent("waitlist_email_success", { placement });
@@ -133,6 +142,21 @@ export function WaitlistForm({
   async function onFinalSubmit() {
     setStatus("loading");
     try {
+      if (dbRecordId) {
+        const { error: sbError } = await supabase
+          .from("waitlist")
+          .update({
+            survey_completed: true,
+            assets: selectedAssets,
+            agents: selectedAgents,
+            trading_styles: selectedStyles,
+            info_gap: infoGapRating
+          })
+          .eq("id", dbRecordId);
+
+        if (sbError) throw sbError;
+      }
+
       trackEvent("waitlist_survey_complete", {
         placement,
         assets: selectedAssets,
@@ -141,11 +165,12 @@ export function WaitlistForm({
         info_gap: infoGapRating
       });
       
-      await new Promise(r => setTimeout(r, 800));
       setStatus("success");
       setStep("completed");
-    } catch {
+    } catch (err) {
+      console.error("Supabase Survey Submit Error:", err);
       setStatus("error");
+      setError(copy.waitlist.networkError);
     }
   }
 
@@ -189,7 +214,7 @@ export function WaitlistForm({
           <div className="grid gap-3">
             <label className="text-sm font-bold uppercase tracking-widest text-stone-400">{copy.waitlist.surveyQ2Label}</label>
             <div className="flex flex-wrap gap-2">
-              {AGENTS.map(agent => (
+              {copy.waitlist.surveyQ2Options.map(agent => (
                 <button
                   key={agent}
                   type="button"
@@ -237,7 +262,7 @@ export function WaitlistForm({
           <div className="grid gap-3">
             <label className="text-sm font-bold uppercase tracking-widest text-stone-400">{copy.waitlist.surveyQ3Label}</label>
             <div className="flex flex-wrap gap-2">
-              {TRADING_STYLES.map(style => (
+              {copy.waitlist.surveyQ3Options.map(style => (
                 <button
                   key={style}
                   type="button"
@@ -290,48 +315,53 @@ export function WaitlistForm({
   }
 
   return (
-    <form
-      onSubmit={onEmailSubmit}
-      className={`glass-panel rounded-[2rem] p-4 shadow-2xl shadow-indigo-900/5 ${
-        compact ? "sm:p-5" : "sm:p-6"
-      }`}
-      noValidate
-    >
-      <div className="grid gap-4">
-        <div className="grid gap-2">
+    <div className={`relative w-full max-w-xl mx-auto ${compact ? "" : "mt-8"}`}>
+      <form
+        onSubmit={onEmailSubmit}
+        className="group relative flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-0 sm:bg-white sm:p-2 sm:rounded-full sm:border sm:border-stone-100 sm:shadow-2xl sm:shadow-indigo-900/10 transition-all focus-within:ring-8 focus-within:ring-indigo-500/5"
+        noValidate
+      >
+        <div className="relative flex-1">
           <label htmlFor={`${id}-email`} className="sr-only">Email</label>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              id={`${id}-email`}
-              name="email"
-              type="email"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                if (status === "error") {
-                   setError("");
-                   setStatus("idle");
-                }
-              }}
-              placeholder={copy.waitlist.emailPlaceholder}
-              className="h-14 w-full flex-1 rounded-2xl border border-stone-100 bg-white px-5 text-base text-stone-900 outline-none transition-all placeholder:text-stone-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
-            />
-            <button
-              type="submit"
-              disabled={status === "loading"}
-              className="group inline-flex h-14 items-center justify-center gap-2 whitespace-nowrap rounded-2xl bg-indigo-600 px-8 text-base font-bold text-white shadow-xl shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-70"
-            >
-              {status === "loading" ? "..." : copy.waitlist.buttonIdle}
-              <ArrowRightIcon size={18} weight="bold" className="transition-transform group-hover:translate-x-1" />
-            </button>
-          </div>
-          { (error || emailError) && (
-            <p className="mt-2 flex items-center gap-2 px-2 text-sm font-bold text-red-500">
-              <WarningCircleIcon weight="bold" /> {error || emailError}
-            </p>
-          )}
+          <input
+            id={`${id}-email`}
+            name="email"
+            type="email"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              if (status === "error") {
+                 setError("");
+                 setStatus("idle");
+              }
+            }}
+            placeholder={copy.waitlist.emailPlaceholder}
+            className="h-14 w-full rounded-2xl sm:rounded-full border border-stone-200/50 sm:border-none bg-stone-50/50 sm:bg-transparent px-6 text-base text-stone-900 outline-none transition-all placeholder:text-stone-400 focus:bg-white sm:focus:bg-transparent"
+          />
         </div>
-      </div>
-    </form>
+        
+        <button
+          type="submit"
+          disabled={status === "loading"}
+          className="group relative inline-flex h-14 items-center justify-center gap-3 whitespace-nowrap rounded-2xl sm:rounded-full bg-indigo-600 px-10 text-base font-black text-white shadow-xl shadow-indigo-600/30 transition-all hover:bg-indigo-700 hover:shadow-indigo-600/40 active:scale-[0.98] disabled:opacity-70 overflow-hidden animate-shimmer"
+        >
+          {status === "loading" ? (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          ) : (
+            <>
+              <span className="tracking-tight">{copy.waitlist.buttonIdle}</span>
+              <ArrowRightIcon size={18} weight="bold" className="transition-transform group-hover:translate-x-1" />
+            </>
+          )}
+        </button>
+      </form>
+
+      { (error || emailError) && (
+        <div className="absolute top-full left-0 right-0 mt-3 flex items-center justify-center gap-2 px-2 text-[11px] font-black text-red-500 animate-in fade-in slide-in-from-top-1">
+          <WarningCircleIcon weight="bold" size={14} /> 
+          {error || emailError}
+        </div>
+      )}
+    </div>
   );
 }
