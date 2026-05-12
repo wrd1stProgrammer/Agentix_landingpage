@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { getDictionary } from "@/lib/i18n";
 import { Analytics } from "@vercel/analytics/react";
+import { MetaPixel } from "@/components/meta-pixel";
 import "../globals.css";
 
 const geistSans = Geist({
@@ -44,6 +45,7 @@ export default async function RootLayout({
       <body className="flex min-h-full flex-col">
         {children}
         <Analytics />
+        <MetaPixel pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID} />
       </body>
     </html>
   );

@@ -1,16 +1,12 @@
-type WaitlistPayload = {
-  email: string;
-  asset?: string;
-  utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  referrer?: string;
-};
+import { createHash, randomBytes } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 
-type WaitlistResponse =
+type WaitlistCreateResponse =
   | {
       ok: true;
-      mode: "webhook" | "development";
+      id: string;
+      surveyToken: string;
+      mode: "service_role" | "development_anon";
     }
   | {
       ok: false;
@@ -18,17 +14,41 @@ type WaitlistResponse =
       details?: string;
     };
 
-const OPTIONAL_FIELDS = [
-  "asset",
+type WaitlistUpdateResponse =
+  | {
+      ok: true;
+      mode: "service_role" | "development_anon";
+    }
+  | {
+      ok: false;
+      error: string;
+      details?: string;
+    };
+
+type SupabaseMode = "service_role" | "development_anon";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const OPTIONAL_STRING_FIELDS = [
   "utm_source",
   "utm_medium",
   "utm_campaign",
+  "utm_content",
+  "utm_term",
+  "fbclid",
   "referrer",
+  "landing_path",
+  "placement",
 ] as const;
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
-function jsonResponse(body: WaitlistResponse, status: number): Response {
+function jsonResponse(
+  body: WaitlistCreateResponse | WaitlistUpdateResponse,
+  status: number,
+): Response {
   return Response.json(body, { status });
 }
 
@@ -56,7 +76,7 @@ function normalizeEmail(value: unknown): string | null {
 
 function readOptionalString(
   body: Record<string, unknown>,
-  key: (typeof OPTIONAL_FIELDS)[number],
+  key: (typeof OPTIONAL_STRING_FIELDS)[number],
 ): string | undefined | null {
   const value = body[key];
 
@@ -72,32 +92,113 @@ function readOptionalString(
   return trimmed.length > 0 ? trimmed.slice(0, 500) : undefined;
 }
 
-function parseWaitlistPayload(body: unknown): WaitlistPayload | null {
-  if (!isRecord(body)) {
+function readOptionalStringArray(
+  body: Record<string, unknown>,
+  key: string,
+): string[] | null {
+  const value = body[key];
+
+  if (value === undefined || value === null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
     return null;
   }
 
-  const email = normalizeEmail(body.email);
+  const items = value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim().slice(0, 120))
+    .filter(Boolean);
 
-  if (!email) {
+  if (items.length !== value.length || items.length > 20) {
     return null;
   }
 
-  const payload: WaitlistPayload = { email };
+  return items;
+}
 
-  for (const key of OPTIONAL_FIELDS) {
-    const value = readOptionalString(body, key);
+function getBoolean(body: Record<string, unknown>, key: string): boolean {
+  return body[key] === true;
+}
 
-    if (value === null) {
-      return null;
-    }
+function createSurveyToken(): string {
+  return randomBytes(32).toString("base64url");
+}
 
-    if (value !== undefined) {
-      payload[key] = value;
-    }
+function hashSurveyToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function getClientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  const firstForwarded = forwarded?.split(",")[0]?.trim();
+
+  return (
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    firstForwarded ||
+    "unknown"
+  );
+}
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000;
+  const maxRequests = 20;
+  const current = rateLimits.get(key);
+
+  if (!current || current.resetAt <= now) {
+    rateLimits.set(key, { count: 1, resetAt: now + windowMs });
+    return false;
   }
 
-  return payload;
+  current.count += 1;
+  return current.count > maxRequests;
+}
+
+function getSupabaseConfig():
+  | { url: string; key: string; mode: SupabaseMode }
+  | { error: string; details?: string } {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+  if (!url) {
+    return { error: "Supabase URL is not configured." };
+  }
+
+  if (serviceRoleKey) {
+    return { url, key: serviceRoleKey, mode: "service_role" };
+  }
+
+  if (process.env.NODE_ENV !== "production" && anonKey) {
+    return { url, key: anonKey, mode: "development_anon" };
+  }
+
+  return {
+    error: "Supabase service role key is not configured.",
+    details:
+      "Set SUPABASE_SERVICE_ROLE_KEY in production so waitlist writes go through the server.",
+  };
+}
+
+function createSupabaseClient() {
+  const config = getSupabaseConfig();
+
+  if ("error" in config) {
+    return config;
+  }
+
+  return {
+    mode: config.mode,
+    client: createClient(config.url, config.key, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }),
+  };
 }
 
 async function readJson(request: Request): Promise<unknown | null> {
@@ -109,83 +210,187 @@ async function readJson(request: Request): Promise<unknown | null> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const body = await readJson(request);
-  const payload = parseWaitlistPayload(body);
+  const clientIp = getClientIp(request);
 
-  if (!payload) {
+  if (isRateLimited(`create:${clientIp}`)) {
     return jsonResponse(
-      {
-        ok: false,
-        error:
-          "Invalid waitlist submission. Send a valid email and optional string fields only.",
-      },
+      { ok: false, error: "Too many waitlist requests. Try again later." },
+      429,
+    );
+  }
+
+  const body = await readJson(request);
+
+  if (!isRecord(body)) {
+    return jsonResponse({ ok: false, error: "Invalid JSON payload." }, 400);
+  }
+
+  const email = normalizeEmail(body.email);
+  const privacyConsent = getBoolean(body, "privacyConsent");
+  const marketingConsent = getBoolean(body, "marketingConsent");
+
+  if (!email) {
+    return jsonResponse({ ok: false, error: "Invalid email address." }, 400);
+  }
+
+  if (!privacyConsent) {
+    return jsonResponse(
+      { ok: false, error: "Privacy consent is required." },
       400,
     );
   }
 
-  const webhookUrl = process.env.WAITLIST_WEBHOOK_URL?.trim();
+  const optionalFields: Record<string, string | undefined> = {};
 
-  if (!webhookUrl) {
-    if (process.env.NODE_ENV === "production") {
-      console.error(
-        "[waitlist] WAITLIST_WEBHOOK_URL is not configured; refusing to fake production collection.",
-      );
+  for (const key of OPTIONAL_STRING_FIELDS) {
+    const value = readOptionalString(body, key);
 
+    if (value === null) {
       return jsonResponse(
-        {
-          ok: false,
-          error: "Waitlist collection is not configured.",
-          details: "Set WAITLIST_WEBHOOK_URL before accepting production signups.",
-        },
-        500,
+        { ok: false, error: `Invalid optional field: ${key}.` },
+        400,
       );
     }
 
-    console.warn(
-      "[waitlist] WAITLIST_WEBHOOK_URL is not configured; returning development-only success.",
-    );
-
-    return jsonResponse({ ok: true, mode: "development" }, 200);
+    optionalFields[key] = value;
   }
 
-  let webhookResponse: Response;
+  const supabase = createSupabaseClient();
 
-  try {
-    webhookResponse = await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+  if ("error" in supabase) {
+    return jsonResponse(
+      { ok: false, error: supabase.error, details: supabase.details },
+      500,
+    );
+  }
 
+  const surveyToken = createSurveyToken();
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase.client
+    .from("waitlist")
+    .insert({
+      email,
+      survey_token_hash: hashSurveyToken(surveyToken),
+      privacy_consent: privacyConsent,
+      marketing_consent: marketingConsent,
+      consent_version: "2026-05-12",
+      consented_at: now,
+      user_agent: request.headers.get("user-agent")?.slice(0, 500),
+      utm_source: optionalFields.utm_source,
+      utm_medium: optionalFields.utm_medium,
+      utm_campaign: optionalFields.utm_campaign,
+      utm_content: optionalFields.utm_content,
+      utm_term: optionalFields.utm_term,
+      fbclid: optionalFields.fbclid,
+      referrer: optionalFields.referrer,
+      landing_path: optionalFields.landing_path,
+      placement: optionalFields.placement,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      return jsonResponse(
+        { ok: false, error: "This email is already registered." },
+        409,
+      );
+    }
+
+    console.error("[waitlist] Supabase insert failed:", error);
     return jsonResponse(
       {
         ok: false,
-        error: "Waitlist webhook request failed.",
-        details: message,
+        error: "Waitlist submission failed.",
+        details: error.message,
       },
-      502,
+      500,
     );
   }
 
-  if (!webhookResponse.ok) {
-    const responseText = await webhookResponse.text().catch(() => "");
-    const details = responseText
-      ? `Webhook returned ${webhookResponse.status}: ${responseText.slice(0, 300)}`
-      : `Webhook returned ${webhookResponse.status}.`;
+  return jsonResponse(
+    { ok: true, id: data.id, surveyToken, mode: supabase.mode },
+    200,
+  );
+}
 
+export async function PATCH(request: Request): Promise<Response> {
+  const clientIp = getClientIp(request);
+
+  if (isRateLimited(`survey:${clientIp}`)) {
+    return jsonResponse(
+      { ok: false, error: "Too many survey requests. Try again later." },
+      429,
+    );
+  }
+
+  const body = await readJson(request);
+
+  if (!isRecord(body)) {
+    return jsonResponse({ ok: false, error: "Invalid JSON payload." }, 400);
+  }
+
+  const id = typeof body.id === "string" ? body.id.trim() : "";
+  const surveyToken =
+    typeof body.surveyToken === "string" ? body.surveyToken.trim() : "";
+  const assets =
+    typeof body.assets === "string" ? body.assets.trim().slice(0, 500) : "";
+  const agents = readOptionalStringArray(body, "agents");
+  const tradingStyles = readOptionalStringArray(body, "tradingStyles");
+  const infoGap =
+    typeof body.infoGap === "string" ? body.infoGap.trim().slice(0, 20) : "";
+
+  if (!UUID_PATTERN.test(id) || surveyToken.length < 20) {
+    return jsonResponse({ ok: false, error: "Invalid survey session." }, 400);
+  }
+
+  if (!agents || !tradingStyles) {
+    return jsonResponse({ ok: false, error: "Invalid survey payload." }, 400);
+  }
+
+  const supabase = createSupabaseClient();
+
+  if ("error" in supabase) {
+    return jsonResponse(
+      { ok: false, error: supabase.error, details: supabase.details },
+      500,
+    );
+  }
+
+  const { data, error } = await supabase.client
+    .from("waitlist")
+    .update({
+      survey_completed: true,
+      assets,
+      agents,
+      trading_styles: tradingStyles,
+      info_gap: infoGap,
+      survey_token_hash: null,
+    })
+    .eq("id", id)
+    .eq("survey_token_hash", hashSurveyToken(surveyToken))
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[waitlist] Supabase survey update failed:", error);
     return jsonResponse(
       {
         ok: false,
-        error: "Waitlist webhook rejected the submission.",
-        details,
+        error: "Survey submission failed.",
+        details: error.message,
       },
-      502,
+      500,
     );
   }
 
-  return jsonResponse({ ok: true, mode: "webhook" }, 200);
+  if (!data) {
+    return jsonResponse(
+      { ok: false, error: "Survey session was not found or already used." },
+      404,
+    );
+  }
+
+  return jsonResponse({ ok: true, mode: supabase.mode }, 200);
 }

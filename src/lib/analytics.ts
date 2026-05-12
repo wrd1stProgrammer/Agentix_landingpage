@@ -14,6 +14,8 @@ export type TrackableEventName =
 
 export type AnalyticsProps = Record<string, AnalyticsValue>;
 
+type MetaStandardEventName = "Lead" | "CompleteRegistration";
+
 declare global {
   interface Window {
     gtag?: (
@@ -24,6 +26,11 @@ declare global {
     plausible?: (
       eventName: TrackableEventName,
       options?: { props?: AnalyticsProps },
+    ) => void;
+    fbq?: (
+      command: "track",
+      eventName: MetaStandardEventName,
+      eventParameters?: AnalyticsProps,
     ) => void;
   }
 }
@@ -51,5 +58,23 @@ export function trackEvent(
 
   if (!tracked && process.env.NODE_ENV === "development") {
     console.info("[analytics]", eventName, eventProps);
+  }
+}
+
+export function trackMetaEvent(
+  eventName: MetaStandardEventName,
+  props?: AnalyticsProps,
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (typeof window.fbq === "function") {
+    window.fbq("track", eventName, props ?? {});
+    return;
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.info("[meta]", eventName, props ?? {});
   }
 }

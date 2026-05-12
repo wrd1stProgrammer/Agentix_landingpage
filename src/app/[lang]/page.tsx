@@ -1,14 +1,12 @@
-import Image from "next/image";
+import Link from "next/link";
 import { FAQ } from "@/components/faq";
-import { HeroActions } from "@/components/hero-actions";
-import { NavLinks } from "@/components/nav-links";
 import { PageViewTracker } from "@/components/page-view-tracker";
 import { WaitlistForm } from "@/components/waitlist-form";
 import { SnsFeed } from "@/components/sns-feed";
 import { DailyBriefing } from "@/components/daily-briefing";
 import { ScrollVideoMockup } from "@/components/scroll-video-mockup";
 import { ComparisonSection } from "@/components/comparison";
-import { getDictionary, Dictionary } from "@/lib/i18n";
+import { getDictionary } from "@/lib/i18n";
 import { ScrollReveal } from "@/components/scroll-reveal";
 
 
@@ -180,9 +178,8 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             </div>
             
             <div className="flex items-center gap-8 text-sm font-semibold text-stone-400">
-               <a href="#" className="hover:text-stone-900 transition-colors">Privacy</a>
-               <a href="#" className="hover:text-stone-900 transition-colors">Terms</a>
-               <a href="#" className="hover:text-stone-900 transition-colors">Twitter</a>
+               <Link href={`/${lang}/privacy`} className="hover:text-stone-900 transition-colors">Privacy</Link>
+               <Link href={`/${lang}/terms`} className="hover:text-stone-900 transition-colors">Terms</Link>
             </div>
 
             <p className="text-sm font-medium text-stone-400">{copy.footer.disclaimer}</p>

@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowRightIcon,
   CheckCircleIcon,
@@ -9,9 +9,8 @@ import {
   CaretRightIcon,
   CaretLeftIcon,
 } from "@phosphor-icons/react";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, trackMetaEvent } from "@/lib/analytics";
 import { getDictionary } from "@/lib/i18n";
-import { supabase } from "@/lib/supabase";
 
 type WaitlistFormProps = {
   id: string;
@@ -24,7 +23,11 @@ type Attribution = {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
+  fbclid?: string;
   referrer?: string;
+  landing_path?: string;
 };
 
 type SubmitState = "idle" | "loading" | "success" | "error";
@@ -41,7 +44,11 @@ function getAttribution(): Attribution {
     utm_source: params.get("utm_source") ?? undefined,
     utm_medium: params.get("utm_medium") ?? undefined,
     utm_campaign: params.get("utm_campaign") ?? undefined,
+    utm_content: params.get("utm_content") ?? undefined,
+    utm_term: params.get("utm_term") ?? undefined,
+    fbclid: params.get("fbclid") ?? undefined,
     referrer: document.referrer || undefined,
+    landing_path: `${window.location.pathname}${window.location.search}`,
   };
 }
 
@@ -70,20 +77,18 @@ export function WaitlistForm({
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [infoGapRating, setInfoGapRating] = useState("");
 
-  const [attribution, setAttribution] = useState<Attribution>({});
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [status, setStatus] = useState<SubmitState>("idle");
   const [error, setError] = useState("");
   const [dbRecordId, setDbRecordId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setAttribution(getAttribution());
-  }, []);
+  const [surveyToken, setSurveyToken] = useState<string | null>(null);
 
   const emailError = useMemo(() => {
     const trimmed = email.trim();
     if (!trimmed) return "";
     return EMAIL_PATTERN.test(trimmed) ? "" : copy.waitlist.invalidEmail;
-  }, [email]);
+  }, [copy.waitlist.invalidEmail, email]);
 
   const toggleItem = (list: string[], item: string) => {
     return list.includes(item) ? list.filter(i => i !== item) : [...list, item];
@@ -100,61 +105,104 @@ export function WaitlistForm({
       return;
     }
 
-    setStatus("loading");
-    try {
-      const { data, error: sbError } = await supabase
-        .from("waitlist")
-        .insert([
-          { 
-            email: trimmedEmail,
-            utm_source: attribution.utm_source,
-            utm_medium: attribution.utm_medium,
-            utm_campaign: attribution.utm_campaign,
-            referrer: attribution.referrer,
-            placement
-          }
-        ])
-        .select()
-        .single();
+    if (!privacyConsent) {
+      setStatus("error");
+      setError(copy.waitlist.privacyRequired);
+      return;
+    }
 
-      if (sbError) {
-        console.error("Supabase Email Submit Error:", sbError);
-        // Handle duplicate email or other DB errors
-        if (sbError.code === "23505") {
+    setStatus("loading");
+    trackEvent("waitlist_submit_attempt", { placement });
+
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          privacyConsent,
+          marketingConsent,
+          placement,
+          ...getAttribution(),
+        }),
+      });
+      const result = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        id?: string;
+        surveyToken?: string;
+        error?: string;
+      } | null;
+
+      if (
+        !response.ok ||
+        result?.ok !== true ||
+        typeof result.id !== "string" ||
+        typeof result.surveyToken !== "string"
+      ) {
+        if (response.status === 409) {
           setError(lang === "ko" ? "이미 신청된 이메일입니다." : "This email is already registered.");
         } else {
-          setError(copy.waitlist.networkError);
+          setError(result?.error || copy.waitlist.networkError);
         }
+
         setStatus("error");
+        trackEvent("waitlist_submit_error", {
+          placement,
+          status: response.status,
+        });
         return;
       }
 
-      setDbRecordId(data.id);
+      setDbRecordId(result.id);
+      setSurveyToken(result.surveyToken);
       setStatus("idle");
       setStep("survey_1");
+      trackEvent("waitlist_submit_success", { placement });
       trackEvent("waitlist_email_success", { placement });
+      trackMetaEvent("Lead", {
+        content_name: "agentix_waitlist",
+        content_category: "waitlist",
+        placement,
+      });
     } catch {
       setStatus("error");
       setError(copy.waitlist.networkError);
+      trackEvent("waitlist_submit_error", { placement });
     }
   }
 
   async function onFinalSubmit() {
+    if (!dbRecordId || !surveyToken) {
+      setStatus("error");
+      setError(copy.waitlist.networkError);
+      return;
+    }
+
     setStatus("loading");
     try {
-      if (dbRecordId) {
-        const { error: sbError } = await supabase
-          .from("waitlist")
-          .update({
-            survey_completed: true,
-            assets: selectedAssets,
-            agents: selectedAgents,
-            trading_styles: selectedStyles,
-            info_gap: infoGapRating
-          })
-          .eq("id", dbRecordId);
+      const response = await fetch("/api/waitlist", {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          id: dbRecordId,
+          surveyToken,
+          assets: selectedAssets,
+          agents: selectedAgents,
+          tradingStyles: selectedStyles,
+          infoGap: infoGapRating,
+        }),
+      });
+      const result = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
 
-        if (sbError) throw sbError;
+      if (!response.ok || result?.ok !== true) {
+        throw new Error(result?.error || copy.waitlist.networkError);
       }
 
       trackEvent("waitlist_survey_complete", {
@@ -163,6 +211,11 @@ export function WaitlistForm({
         agents: selectedAgents.join(", "),
         styles: selectedStyles.join(", "),
         info_gap: infoGapRating
+      });
+      trackMetaEvent("CompleteRegistration", {
+        content_name: "agentix_waitlist_survey",
+        content_category: "waitlist",
+        placement,
       });
       
       setStatus("success");
@@ -355,6 +408,42 @@ export function WaitlistForm({
           )}
         </button>
       </form>
+
+      <div className="mt-4 grid gap-2 text-left text-[11px] font-semibold leading-5 text-stone-500">
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={privacyConsent}
+            onChange={(event) => {
+              setPrivacyConsent(event.target.checked);
+              if (status === "error") {
+                setError("");
+                setStatus("idle");
+              }
+            }}
+            className="mt-1 h-3.5 w-3.5 rounded border-stone-300 text-indigo-600"
+          />
+          <span>
+            {copy.waitlist.privacyConsentPrefix}{" "}
+            <a
+              href={`/${lang}/privacy`}
+              className="underline underline-offset-2 hover:text-stone-900"
+            >
+              {copy.waitlist.privacyLinkLabel}
+            </a>
+            {copy.waitlist.privacyConsentSuffix}
+          </span>
+        </label>
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={marketingConsent}
+            onChange={(event) => setMarketingConsent(event.target.checked)}
+            className="mt-1 h-3.5 w-3.5 rounded border-stone-300 text-indigo-600"
+          />
+          <span>{copy.waitlist.marketingConsent}</span>
+        </label>
+      </div>
 
       { (error || emailError) && (
         <div className="absolute top-full left-0 right-0 mt-3 flex items-center justify-center gap-2 px-2 text-[11px] font-black text-red-500 animate-in fade-in slide-in-from-top-1">

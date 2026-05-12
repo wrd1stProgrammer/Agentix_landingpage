@@ -23,33 +23,40 @@ Open [http://localhost:3000](http://localhost:3000).
 Create `.env.local` from `.env.example`:
 
 ```bash
-WAITLIST_WEBHOOK_URL=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_META_PIXEL_ID=
+NEXT_PUBLIC_CONTACT_EMAIL=
 ```
 
-`WAITLIST_WEBHOOK_URL`은 `POST /api/waitlist`가 제출 데이터를 전달할 서버 사이드 웹훅 주소입니다.
+`SUPABASE_SERVICE_ROLE_KEY`는 서버의 `POST/PATCH /api/waitlist`에서만 사용됩니다. `NEXT_PUBLIC_` 접두사를 붙이지 마세요.
 
-개발 환경에서 이 값이 비어 있으면 API는 development-only success를 반환하고 서버 콘솔에 경고를 남깁니다. 프로덕션에서는 실제 수집을 가장하지 않도록 실패 응답을 반환합니다.
+`NEXT_PUBLIC_META_PIXEL_ID`를 설정하면 Meta Pixel이 로드되고, 이메일 저장 성공 시 `Lead`, 설문 완료 시 `CompleteRegistration` 이벤트가 발생합니다.
 
 ## Waitlist Backend Setup
 
 광고나 외부 트래픽을 보내기 전에 반드시 실제 수집 백엔드를 연결하세요.
 
-1. Formspree, Tally, Make, Zapier 또는 커스텀 웹훅 중 하나를 선택합니다.
-2. JSON 요청을 받을 수 있는 엔드포인트를 만듭니다.
-3. `.env.local`에 `WAITLIST_WEBHOOK_URL`을 설정합니다.
-4. 수집 대상이 `email`, `asset`, `utm_source`, `utm_medium`, `utm_campaign`, `referrer` 필드를 저장하는지 확인합니다.
-5. 랜딩 페이지에서 테스트 이메일을 제출하고 대상 시스템에 기록되는지 확인합니다.
-6. 배포 환경에도 같은 환경 변수를 설정합니다.
+1. Supabase SQL Editor에서 `supabase_setup.sql`을 실행합니다.
+2. `.env.local`과 배포 환경에 Supabase URL, anon key, service role key를 설정합니다.
+3. Meta Events Manager에서 데이터셋/픽셀을 만들고 `NEXT_PUBLIC_META_PIXEL_ID`를 설정합니다.
+4. 랜딩 페이지에서 테스트 이메일을 제출합니다.
+5. Supabase `waitlist` 테이블에 이메일, 동의 필드, UTM 필드가 저장되는지 확인합니다.
+6. Meta Events Manager의 Test Events에서 `PageView`, `Lead`, `CompleteRegistration`을 확인합니다.
 
-커스텀 웹훅 예시:
+API 제출 예시:
 
 ```json
 {
   "email": "operator@example.com",
-  "asset": "SOL",
-  "utm_source": "linkedin",
-  "utm_medium": "paid",
+  "privacyConsent": true,
+  "marketingConsent": false,
+  "placement": "hero",
+  "utm_source": "meta",
+  "utm_medium": "paid_social",
   "utm_campaign": "smoke_test",
+  "utm_content": "problem_01",
   "referrer": "https://example.com/referring-page"
 }
 ```
@@ -69,6 +76,8 @@ WAITLIST_WEBHOOK_URL=
 - Sample briefing interest: `sample_briefing_click`
 - Form attempts: `waitlist_submit_attempt`
 - Successful waitlist submissions: `waitlist_submit_success`
+- Meta Lead conversions: `Lead`
+- Meta survey completions: `CompleteRegistration`
 - Submit errors: `waitlist_submit_error`
 - FAQ engagement: `faq_expand`
 - Waitlist conversion rate: successful submissions divided by landing page views

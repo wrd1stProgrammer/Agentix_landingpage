@@ -66,11 +66,9 @@ export function ScrollVideoMockup({ videoSrc, fallbackImage }: ScrollVideoMockup
       
       // Calculate progress based on when the container enters and leaves the viewport
       // We want the video to play as the user scrolls through the hero section.
-      const start = rect.top - windowHeight;
-      const end = rect.bottom;
       const total = rect.height + windowHeight;
       
-      const progress = Math.max(0, Math.min(1, 1 - (rect.bottom / (rect.height + windowHeight))));
+      const progress = Math.max(0, Math.min(1, 1 - (rect.bottom / total)));
       
       // Update targetTime variable only (Decoupling)
       targetTimeRef.current = progress * video.duration;
